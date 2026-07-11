@@ -1,0 +1,20 @@
+{
+  "name": "hugoqol",
+  "displayName": "Hugo QOL",
+  "description": "Turn Hugo {{< ref >}} / {{< relref >}} (and your own) shortcodes into clickable links to the content files they reference.",
+  "version": "0.1.0",
+  "publisher": "micahrl",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:markdown",
+    "onLanguage:html"
+  ],
+  "main": "./extension.js",
+  "contributes": {}
+}
