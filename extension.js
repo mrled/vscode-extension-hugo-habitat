@@ -77,7 +77,7 @@ function activate(context) {
           if (!range.contains(mk.position)) continue;
           const part = new vscode.InlayHintLabelPart('[↗]');
           part.command = { title: 'Open ' + mk.rel, command: OPEN_COMMAND, arguments: [mk.file] };
-          part.tooltip = 'Hugo: ' + mk.rel;
+          part.tooltip = 'Hugo Habitat: ' + mk.rel;
           const hint = new vscode.InlayHint(mk.position, [part]);
           hint.paddingLeft = true;
           hints.push(hint);
