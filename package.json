@@ -1,9 +1,9 @@
 {
-  "name": "hugohabitat",
+  "name": "hugo-habitat",
   "displayName": "Hugo Habitat",
   "description": "Turn Hugo - personal VS Code extension for better Hugo content authoring",
   "version": "0.1.0",
-  "publisher": "Micah R Ledbetter",
+  "publisher": "mrled",
   "license": "MIT",
   "engines": {
     "vscode": "^1.75.0"
