@@ -1,9 +1,9 @@
 {
-  "name": "hugoqol",
-  "displayName": "Hugo QOL",
-  "description": "Turn Hugo {{< ref >}} / {{< relref >}} (and your own) shortcodes into clickable links to the content files they reference.",
+  "name": "hugohabitat",
+  "displayName": "Hugo Habitat",
+  "description": "Turn Hugo - personal VS Code extension for better Hugo content authoring",
   "version": "0.1.0",
-  "publisher": "micahrl",
+  "publisher": "Micah R Ledbetter",
   "license": "MIT",
   "engines": {
     "vscode": "^1.75.0"

@@ -1,5 +1,5 @@
 // @ts-check
-// Hugo QOL — clickable ref/relref shortcode links.
+// Hugo Habitat - personal VS Code extension for better Hugo content authoring
 //
 // Pure stdlib at runtime: only the built-in `vscode`, `fs`, and `path` modules
 // are used, so there is nothing to compile and no npm packages to install. The
@@ -209,14 +209,14 @@ function computeAll(document) {
     } else if (found.length === 0) {
       diagnostics.push(new vscode.Diagnostic(
         range,
-        'Hugo QOL: no content file matches "' + label + '".',
+        'Hugo Habitat: no content file matches "' + label + '".',
         vscode.DiagnosticSeverity.Warning
       ));
     } else {
       const list = found.map((f) => path.relative(contentRoot, f.file)).join(', ');
       diagnostics.push(new vscode.Diagnostic(
         range,
-        'Hugo QOL: reference "' + label + '" is ambiguous — ' + found.length + ' matches: ' + list + '.',
+        'Hugo Habitat: reference "' + label + '" is ambiguous — ' + found.length + ' matches: ' + list + '.',
         vscode.DiagnosticSeverity.Error
       ));
     }
@@ -229,7 +229,7 @@ function computeAll(document) {
  * @param {vscode.ExtensionContext} context
  */
 function activate(context) {
-  const diagnostics = vscode.languages.createDiagnosticCollection('hugoqol');
+  const diagnostics = vscode.languages.createDiagnosticCollection('hugohabitat');
   context.subscriptions.push(diagnostics);
 
   const selector = [{ language: 'markdown' }, { language: 'html' }];
