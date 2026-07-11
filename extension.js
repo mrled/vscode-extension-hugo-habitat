@@ -159,8 +159,13 @@ function matchFiles(index, refSegs) {
   });
 }
 
+/** A clickable marker to render after a resolved reference.
+ *  @typedef {{ position: vscode.Position, file: string, rel: string }} Marker */
+
 // Resolve a set of reference segments against the index and, depending on the
-// number of matches, push a clickable link or a diagnostic. `warnOnMissing`
+// number of matches, record a clickable marker or a diagnostic. `markerAt` is
+// where the marker glyph should be placed (after the whole link construct),
+// while `range` is the span the diagnostic squiggle should cover. `warnOnMissing`
 // controls whether a zero-match reference is flagged: shortcodes are always
 // meant to resolve (so we warn), but a Markdown link that doesn't resolve is
 // probably an ordinary link, so we stay silent and leave it to VS Code.
@@ -168,20 +173,19 @@ function matchFiles(index, refSegs) {
  * @param {Entry[]} index
  * @param {string} contentRoot
  * @param {vscode.Range} range
+ * @param {vscode.Position} markerAt
  * @param {string[]} refSegs
- * @param {vscode.DocumentLink[]} links
+ * @param {Marker[]} markers
  * @param {vscode.Diagnostic[]} diagnostics
  * @param {boolean} warnOnMissing
  */
-function resolveInto(index, contentRoot, range, refSegs, links, diagnostics, warnOnMissing) {
+function resolveInto(index, contentRoot, range, markerAt, refSegs, markers, diagnostics, warnOnMissing) {
   if (!refSegs.length) return;
   const found = matchFiles(index, refSegs);
   const label = refSegs.join('/');
 
   if (found.length === 1) {
-    const link = new vscode.DocumentLink(range, vscode.Uri.file(found[0].file));
-    link.tooltip = 'Hugo Habitat: ' + path.relative(contentRoot, found[0].file);
-    links.push(link);
+    markers.push({ position: markerAt, file: found[0].file, rel: path.relative(contentRoot, found[0].file) });
   } else if (found.length === 0) {
     if (warnOnMissing) {
       diagnostics.push(new vscode.Diagnostic(
@@ -202,16 +206,16 @@ function resolveInto(index, contentRoot, range, refSegs, links, diagnostics, war
 
 /**
  * @param {vscode.TextDocument} document
- * @returns {{ links: vscode.DocumentLink[], diagnostics: vscode.Diagnostic[] }}
+ * @returns {{ markers: Marker[], diagnostics: vscode.Diagnostic[] }}
  */
 function computeAll(document) {
-  /** @type {vscode.DocumentLink[]} */
-  const links = [];
+  /** @type {Marker[]} */
+  const markers = [];
   /** @type {vscode.Diagnostic[]} */
   const diagnostics = [];
 
   const contentRoot = findContentRoot(document.uri.fsPath);
-  if (!contentRoot) return { links, diagnostics };
+  if (!contentRoot) return { markers, diagnostics };
 
   const index = getIndex(contentRoot);
   const text = document.getText();
@@ -231,7 +235,7 @@ function computeAll(document) {
     const argEnd = m.index + m[0].length;
     const argStart = argEnd - token.length;
 
-    // Underline just the slug; drop surrounding quotes from the clickable range.
+    // Squiggle just the slug; drop surrounding quotes from the diagnostic range.
     let innerStart = argStart;
     let innerEnd = argEnd;
     if (token.length >= 2 && (token[0] === '"' || token[0] === "'") && token[token.length - 1] === token[0]) {
@@ -239,17 +243,22 @@ function computeAll(document) {
       innerEnd -= 1;
     }
     const range = new vscode.Range(document.positionAt(innerStart), document.positionAt(innerEnd));
-    resolveInto(index, contentRoot, range, parseRef(token), links, diagnostics, true);
+
+    // Place the marker glyph after the shortcode's closing delimiter (>}} / %}}),
+    // so it sits at the end of the whole construct rather than mid-syntax.
+    const close = text.indexOf('}}', argEnd);
+    const markerAt = document.positionAt(close === -1 ? argEnd : close + 2);
+    resolveInto(index, contentRoot, range, markerAt, parseRef(token), markers, diagnostics, true);
   }
 
   // Also resolve ordinary Markdown links whose target is a Hugo logical path,
   // e.g. [text](blog/whatever) or [text](/blog/whatever). Both are treated as
   // content-root references (the leading slash is optional and normalized away
-  // by parseRef). We only take over a link when its target resolves to exactly
-  // one content file; targets with a URL scheme, an in-page #anchor, or an
+  // by parseRef). We only add a marker when the target resolves to exactly one
+  // content file; targets with a URL scheme, an in-page #anchor, or an
   // explicitly relative ./ or ../ path are left to VS Code's built-in handling.
   if (document.languageId === 'markdown') {
-    const mdRe = /(\[[^\]]*\]\()([^)\s]+)/g;
+    const mdRe = /(\[[^\]]*\]\()([^)\s]+)([^)]*\))/g;
     let mm;
     while ((mm = mdRe.exec(text)) !== null) {
       const target = mm[2];
@@ -261,11 +270,13 @@ function computeAll(document) {
         document.positionAt(targetStart),
         document.positionAt(targetStart + target.length)
       );
-      resolveInto(index, contentRoot, range, parseRef(target), links, diagnostics, false);
+      // Marker goes after the closing paren of the whole [text](target) link.
+      const markerAt = document.positionAt(mm.index + mm[0].length);
+      resolveInto(index, contentRoot, range, markerAt, parseRef(target), markers, diagnostics, false);
     }
   }
 
-  return { links, diagnostics };
+  return { markers, diagnostics };
 }
 
 /**
@@ -276,12 +287,43 @@ function activate(context) {
   context.subscriptions.push(diagnostics);
 
   const selector = [{ language: 'markdown' }, { language: 'html' }];
+
+  // Command the marker glyph invokes when clicked. A label part's `command` is
+  // reliably fired on click, unlike `location`, which is inconsistent.
+  const OPEN_COMMAND = 'hugohabitat.openReference';
   context.subscriptions.push(
-    vscode.languages.registerDocumentLinkProvider(selector, {
-      provideDocumentLinks(document) {
-        const { links, diagnostics: diags } = computeAll(document);
+    vscode.commands.registerCommand(OPEN_COMMAND, (/** @type {string} */ file) => {
+      return vscode.commands.executeCommand('vscode.open', vscode.Uri.file(file));
+    })
+  );
+
+  // A single inline provider handles both reference shortcodes and Hugo-style
+  // Markdown links: every resolved reference gets a clickable `↗` glyph placed
+  // right after it. Clicking the glyph runs OPEN_COMMAND to open the content
+  // file. Using an inlay hint (rather than a DocumentLink over the link text)
+  // means we don't collide with VS Code's built-in Markdown link on the same
+  // range, so refs and Markdown links behave identically.
+  /** @type {vscode.EventEmitter<void>} */
+  const onDidChangeInlayHints = new vscode.EventEmitter();
+  context.subscriptions.push(onDidChangeInlayHints);
+  context.subscriptions.push(
+    vscode.languages.registerInlayHintsProvider(selector, {
+      onDidChangeInlayHints: onDidChangeInlayHints.event,
+      provideInlayHints(document, range) {
+        const { markers, diagnostics: diags } = computeAll(document);
         diagnostics.set(document.uri, diags);
-        return links;
+        /** @type {vscode.InlayHint[]} */
+        const hints = [];
+        for (const mk of markers) {
+          if (!range.contains(mk.position)) continue;
+          const part = new vscode.InlayHintLabelPart('[↗]');
+          part.command = { title: 'Open ' + mk.rel, command: OPEN_COMMAND, arguments: [mk.file] };
+          part.tooltip = 'Hugo: ' + mk.rel;
+          const hint = new vscode.InlayHint(mk.position, [part]);
+          hint.paddingLeft = true;
+          hints.push(hint);
+        }
+        return hints;
       },
     })
   );
@@ -298,8 +340,12 @@ function activate(context) {
   );
   vscode.workspace.textDocuments.forEach(refresh);
 
-  // Rebuild the file index whenever content files (or the config) change.
-  const invalidate = () => indexCache.clear();
+  // Rebuild the file index whenever content files (or the config) change, and
+  // ask VS Code to re-request inlay hints since resolution may now differ.
+  const invalidate = () => {
+    indexCache.clear();
+    onDidChangeInlayHints.fire();
+  };
   const watcher = vscode.workspace.createFileSystemWatcher('**/*.{md,markdown,html,htm}');
   watcher.onDidCreate(invalidate);
   watcher.onDidDelete(invalidate);

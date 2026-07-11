@@ -7,18 +7,32 @@ A VS Code extension that makes working with Hugo sites nicer.
 No build step, no npm install ---
 it's plain JavaScript using only the Node and VS Code standard libraries.
 
-### Turn reference shortcodes into clickable links
+### A clickable jump-to-file glyph for every reference
 
-In any Markdown or HTML file under a Hugo `content/` directory,
-it detects references to bare unique names, paths relative to the content directory, or unique tails, for example:
+In any Markdown or HTML file under a Hugo `content/` directory, it resolves
+references against the files in `content/` and renders a small clickable `[↗]`
+glyph right after each one. Cmd/Ctrl-click the glyph to open the referenced
+content file. The same interaction works for every reference type below.
+
+It recognises **reference shortcodes** — bare unique names, paths relative to
+the content directory, or unique tails:
 
 - `{{< ref unique-slug >}}`
 - `{{< relref "/area51/posts/unique-slug" >}}`
 - `{{< ref "/subsection/area51" >}}`
 
-References
+And it recognises **ordinary Markdown links** whose target is a Hugo logical
+path (the leading slash is optional — `blog/whatever` is treated the same as
+`/blog/whatever`):
 
-It turns them into clickable links for files like:
+- `[Improving argparse docs](/blog/argparse-improving-docs-generation)`
+- `[Improving argparse docs](blog/argparse-improving-docs-generation)`
+
+Markdown links with a URL scheme (`https:`, `mailto:`, …), an in-page
+`#anchor`, or an explicitly relative `./` or `../` path are ignored and left to
+VS Code's built-in handling.
+
+Both resolve to files like:
 
 - `content/subsection/unique-slug/index.md`
 - `content/blog/_index.md`
@@ -30,24 +44,18 @@ This works for both `.md` and `.html` files.
 Exactly one file must match, else it will show a warning squiggle and an error listing candidates
 (e.g. if both `slug.md` and `slug/index.md` exist).
 
+The glyph is an [inlay hint](https://code.visualstudio.com/docs/editor/editingevolved),
+so it needs `editor.inlayHints.enabled` to be on (the default). A plain
+DocumentLink over the link text can't be used for Markdown links, because VS
+Code's built-in Markdown link provider claims the same range and wins the
+cmd-click; the inlay glyph is a separate inline element, so it sidesteps that
+collision and behaves the same for shortcodes and Markdown links alike.
+
 ### Custom shortcodes
 
 It detects `ref` and `relref` shortcodes by default.
 You can add to this list by setting `shortcodes` in the config file,
 for instance, if you have a `page` shortcode: `"shortcodes": ["page"]`.
-
-### Clickable Markdown links
-
-VS Code supports Markdown links, but only resolved from the _repository root_, not from the `content/` directory.
-This clashes with what Hugo expects, and means that clickable Markdown links don't work for Hugo sites.
-We add a clickable link for the `content/`-based path that Hugo uses to a hover menu.
-This is a little confusing; for the `ref` style links above, you just cmd-click,
-while for real Markdown links, you hover over it, then select `Hugo Habitat: /path/to/file.md`.
-
-Supports links like this:
-
-- `[Improving argparse docs](/blog/argparse-improving-docs-generation)`
-- `[Improving argparse docs](blog/argparse-improving-docs-generation)` (the leading slash is optional)
 
 ## Configuration
 
