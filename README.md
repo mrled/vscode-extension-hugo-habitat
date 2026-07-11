@@ -51,7 +51,7 @@ Code's built-in Markdown link provider claims the same range and wins the
 cmd-click; the inlay glyph is a separate inline element, so it sidesteps that
 collision and behaves the same for shortcodes and Markdown links alike.
 
-### Limitations
+#### Limitations
 
 - Ordinary Markdown links don't actually work for Hugo sites;
   there is no way for a link like `[blog](/blog)` to resolve to `content/blog/` in the repo
@@ -63,11 +63,21 @@ collision and behaves the same for shortcodes and Markdown links alike.
 - There are not really any color options for annotations like our `[↗]` glyph;
   technically we could set `InlayHintKind` to `Parameter` or `Type`, but at least in my theme, these are all the same as the default
 
-### Custom shortcodes
+#### Custom shortcodes
 
 It detects `ref` and `relref` shortcodes by default.
 You can add to this list by setting `shortcodes` in the config file,
 for instance, if you have a `page` shortcode: `"shortcodes": ["page"]`.
+
+### Open the current page in a browser
+
+Run **Hugo Habitat: Open in Browser** from the command palette to open that file in your browser.
+Requires `hugo server` to be running.
+Uses `baseurl` in the config, or defaults to `http://localhost:1313`.
+Examples:
+
+- `content/blog/area51/index.md` → `<baseurl>/blog/area51/`
+- `content/_index.md` → `<baseurl>/`
 
 ## Configuration
 
@@ -75,6 +85,7 @@ for instance, if you have a `page` shortcode: `"shortcodes": ["page"]`.
 
 ```json
 {
+  "baseurl": "https://example.com",
   "shortcodes": ["page"]
 }
 ```

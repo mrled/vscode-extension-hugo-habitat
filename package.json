@@ -16,7 +16,38 @@
     "onLanguage:html"
   ],
   "main": "./extension.js",
-  "contributes": {},
+  "contributes": {
+    "commands": [
+      {
+        "command": "hugohabitat.openInBrowser",
+        "title": "Hugo Habitat: Open in Browser",
+        "category": "Hugo Habitat",
+        "icon": "$(globe)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "hugohabitat.openInBrowser",
+          "when": "resourceLangId == markdown || resourceLangId == html"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "hugohabitat.openInBrowser",
+          "when": "resourceLangId == markdown || resourceLangId == html",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "hugohabitat.openInBrowser",
+          "when": "resourceLangId == markdown || resourceLangId == html",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
   "scripts": {
     "typecheck": "tsc -p jsconfig.json"
   },
