@@ -81,6 +81,17 @@ Examples:
 - `content/blog/area51/index.md` → `<baseurl>/blog/area51/`
 - `content/_index.md` → `<baseurl>/`
 
+### Update the frontmatter date
+
+Run **Hugo Habitat: Update Date to Now** from the command palette
+(or press <kbd>Ctrl</kbd>+<kbd>K</kbd> <kbd>D</kbd>, <kbd>Cmd</kbd>+<kbd>K</kbd> <kbd>D</kbd> on macOS)
+to set the current file's frontmatter `date` field to the current time,
+written as a local-time RFC 3339 timestamp (e.g. `2026-07-11T14:32:07-05:00`).
+
+Works on both YAML (`---`) and TOML (`+++`) frontmatter.
+An existing `date` field is rewritten in place (keeping its indentation);
+if there is no `date` field, one is inserted at the top of the block.
+
 ## Configuration
 
 `habitat.json` in the root directory.

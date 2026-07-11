@@ -15,6 +15,7 @@ const vscode = require('vscode');
 const { findContentRoot, clearIndexCache } = require('./lib/content');
 const { browserUrlFor } = require('./lib/config');
 const { computeAll } = require('./lib/resolve');
+const { dateFieldEdit } = require('./lib/frontmatter');
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -53,6 +54,27 @@ function activate(context) {
       }
       const url = browserUrlFor(contentRoot, filePath);
       return vscode.env.openExternal(vscode.Uri.parse(url));
+    })
+  );
+
+  // Set the current file's frontmatter `date` field to now. Works on any file
+  // with a `---` (YAML) or `+++` (TOML) frontmatter block: an existing `date`
+  // is rewritten in place, otherwise one is inserted at the top of the block.
+  context.subscriptions.push(
+    vscode.commands.registerCommand('hugohabitat.updateDate', async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        vscode.window.showWarningMessage('Hugo Habitat: no active editor to update.');
+        return;
+      }
+      const doc = editor.document;
+      const edit = dateFieldEdit(doc.getText());
+      if (!edit) {
+        vscode.window.showWarningMessage('Hugo Habitat: no frontmatter block found to update.');
+        return;
+      }
+      const range = new vscode.Range(doc.positionAt(edit.start), doc.positionAt(edit.end));
+      await editor.edit((b) => b.replace(range, edit.newText));
     })
   );
 

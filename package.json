@@ -23,6 +23,11 @@
         "title": "Hugo Habitat: Open in Browser",
         "category": "Hugo Habitat",
         "icon": "$(globe)"
+      },
+      {
+        "command": "hugohabitat.updateDate",
+        "title": "Hugo Habitat: Update Date to Now",
+        "category": "Hugo Habitat"
       }
     ],
     "keybindings": [
@@ -31,12 +36,22 @@
         "key": "ctrl+k h",
         "mac": "cmd+k h",
         "when": "editorTextFocus && (resourceLangId == markdown || resourceLangId == html)"
+      },
+      {
+        "command": "hugohabitat.updateDate",
+        "key": "ctrl+k d",
+        "mac": "cmd+k d",
+        "when": "editorTextFocus && (resourceLangId == markdown || resourceLangId == html)"
       }
     ],
     "menus": {
       "commandPalette": [
         {
           "command": "hugohabitat.openInBrowser",
+          "when": "resourceLangId == markdown || resourceLangId == html"
+        },
+        {
+          "command": "hugohabitat.updateDate",
           "when": "resourceLangId == markdown || resourceLangId == html"
         }
       ],
@@ -50,6 +65,11 @@
       "editor/context": [
         {
           "command": "hugohabitat.openInBrowser",
+          "when": "resourceLangId == markdown || resourceLangId == html",
+          "group": "navigation"
+        },
+        {
+          "command": "hugohabitat.updateDate",
           "when": "resourceLangId == markdown || resourceLangId == html",
           "group": "navigation"
         }
