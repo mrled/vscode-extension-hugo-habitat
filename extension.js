@@ -1,15 +1,24 @@
+// @ts-check
 // Hugo QOL — clickable ref/relref shortcode links.
 //
-// Pure stdlib: only the built-in `vscode`, `fs`, and `path` modules are used,
-// so there is nothing to compile and no npm packages to install.
+// Pure stdlib at runtime: only the built-in `vscode`, `fs`, and `path` modules
+// are used, so there is nothing to compile and no npm packages to install. The
+// `// @ts-check` above plus JSDoc types give editor/`tsc` type-checking without
+// TypeScript; `@types/vscode` is a dev-only dependency for that checking.
 
 const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
 
-// contentRoot -> [{ segments: string[], file: string }]
+/** A content file and its logical-path segments. @typedef {{ segments: string[], file: string }} Entry */
+
+/** @type {Map<string, Entry[]>} contentRoot -> entries */
 const indexCache = new Map();
 
+/**
+ * @param {string} s
+ * @returns {string}
+ */
 function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -17,6 +26,10 @@ function escapeRegex(s) {
 // Walk up a file's path to the enclosing Hugo `content` directory.
 // Returns the absolute path of that directory, or null if the file is not
 // inside one (the extension only acts on files under content/).
+/**
+ * @param {string} filePath
+ * @returns {string | null}
+ */
 function findContentRoot(filePath) {
   const segments = filePath.split(path.sep);
   const idx = segments.indexOf('content');
@@ -29,6 +42,11 @@ function findContentRoot(filePath) {
 //   content/blog/area51/index.md   -> ["blog", "area51"]
 //   content/tags/area51/_index.md  -> ["tags", "area51"]
 //   content/area51/posts/slug.md   -> ["area51", "posts", "slug"]
+/**
+ * @param {string} contentRoot
+ * @param {string} file
+ * @returns {string[]}
+ */
 function logicalSegments(contentRoot, file) {
   let rel = path.relative(contentRoot, file).replace(/\\/g, '/');
   rel = rel.replace(/\.(md|markdown|html?)$/i, '');
@@ -37,8 +55,14 @@ function logicalSegments(contentRoot, file) {
   return segs;
 }
 
+/**
+ * @param {string} contentRoot
+ * @returns {Entry[]}
+ */
 function buildIndex(contentRoot) {
+  /** @type {Entry[]} */
   const entries = [];
+  /** @param {string} dir */
   const walk = (dir) => {
     let items;
     try {
@@ -60,14 +84,26 @@ function buildIndex(contentRoot) {
   return entries;
 }
 
+/**
+ * @param {string} contentRoot
+ * @returns {Entry[]}
+ */
 function getIndex(contentRoot) {
-  if (!indexCache.has(contentRoot)) indexCache.set(contentRoot, buildIndex(contentRoot));
-  return indexCache.get(contentRoot);
+  let idx = indexCache.get(contentRoot);
+  if (!idx) {
+    idx = buildIndex(contentRoot);
+    indexCache.set(contentRoot, idx);
+  }
+  return idx;
 }
 
 // Which shortcode names are treated as references. `ref` and `relref` are
 // always recognized; any "shortcodes" listed in habitat.json (in the primary
 // Hugo directory, the one that holds content/) are added on top.
+/**
+ * @param {string} contentRoot
+ * @returns {string[]}
+ */
 function getShortcodes(contentRoot) {
   const names = ['ref', 'relref'];
   const projectRoot = path.dirname(contentRoot);
@@ -87,6 +123,10 @@ function getShortcodes(contentRoot) {
 // Normalize a shortcode argument into path segments to look up.
 // Handles quotes, a leading/trailing slash, a #fragment, and a trailing
 // .md/.html on the last segment.
+/**
+ * @param {string} token
+ * @returns {string[]}
+ */
 function parseRef(token) {
   let t = token.trim();
   if (t.length >= 2 && (t[0] === '"' || t[0] === "'") && t[t.length - 1] === t[0]) {
@@ -105,6 +145,11 @@ function parseRef(token) {
 //   - bare unique name:  ["slug"]
 //   - full path:         ["area51", "posts", "slug"]
 //   - unique path tail:  ["subsection", "area51"]
+/**
+ * @param {Entry[]} index
+ * @param {string[]} refSegs
+ * @returns {Entry[]}
+ */
 function matchFiles(index, refSegs) {
   if (!refSegs.length) return [];
   return index.filter((e) => {
@@ -114,8 +159,14 @@ function matchFiles(index, refSegs) {
   });
 }
 
+/**
+ * @param {vscode.TextDocument} document
+ * @returns {{ links: vscode.DocumentLink[], diagnostics: vscode.Diagnostic[] }}
+ */
 function computeAll(document) {
+  /** @type {vscode.DocumentLink[]} */
   const links = [];
+  /** @type {vscode.Diagnostic[]} */
   const diagnostics = [];
 
   const contentRoot = findContentRoot(document.uri.fsPath);
@@ -174,6 +225,9 @@ function computeAll(document) {
   return { links, diagnostics };
 }
 
+/**
+ * @param {vscode.ExtensionContext} context
+ */
 function activate(context) {
   const diagnostics = vscode.languages.createDiagnosticCollection('hugoqol');
   context.subscriptions.push(diagnostics);
@@ -189,6 +243,7 @@ function activate(context) {
     })
   );
 
+  /** @param {vscode.TextDocument} [document] */
   const refresh = (document) => {
     if (!document || (document.languageId !== 'markdown' && document.languageId !== 'html')) return;
     diagnostics.set(document.uri, computeAll(document).diagnostics);

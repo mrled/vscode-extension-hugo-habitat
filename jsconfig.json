@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "checkJs": true,
+    "strict": true,
+    "noEmit": true,
+    "target": "ES2021",
+    "lib": ["ES2021"],
+    "module": "node16",
+    "moduleResolution": "node16"
+  },
+  "include": ["*.js"],
+  "exclude": ["node_modules"]
+}
