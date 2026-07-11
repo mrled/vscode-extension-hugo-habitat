@@ -51,6 +51,18 @@ Code's built-in Markdown link provider claims the same range and wins the
 cmd-click; the inlay glyph is a separate inline element, so it sidesteps that
 collision and behaves the same for shortcodes and Markdown links alike.
 
+### Limitations
+
+- Ordinary Markdown links don't actually work for Hugo sites;
+  there is no way for a link like `[blog](/blog)` to resolve to `content/blog/` in the repo
+- I could not override default behavior of clickable ordinary Markdown links
+- An annotation can be directly clickable, so that's what we used
+- I could have made `{{< ref ... >}}` links directly clickable, but I wanted to be consistent instead
+- I tested CodeLense, which would put clickable information in a hover panel above the Markdown link;
+  this worked but meant you had to hover, move mouse, then cmd-click, which was awkward
+- There are not really any color options for annotations like our `[↗]` glyph;
+  technically we could set `InlayHintKind` to `Parameter` or `Type`, but at least in my theme, these are all the same as the default
+
 ### Custom shortcodes
 
 It detects `ref` and `relref` shortcodes by default.
