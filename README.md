@@ -71,7 +71,9 @@ for instance, if you have a `page` shortcode: `"shortcodes": ["page"]`.
 
 ### Open the current page in a browser
 
-Run **Hugo Habitat: Open in Browser** from the command palette to open that file in your browser.
+Run **Hugo Habitat: Open in Browser** from the command palette
+(or press <kbd>Ctrl</kbd>+<kbd>K</kbd> <kbd>H</kbd>, <kbd>Cmd</kbd>+<kbd>K</kbd> <kbd>H</kbd> on macOS)
+to open that file in your browser.
 Requires `hugo server` to be running.
 Uses `baseurl` in the config, or defaults to `http://localhost:1313`.
 Examples:

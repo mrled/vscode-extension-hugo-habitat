@@ -25,6 +25,14 @@
         "icon": "$(globe)"
       }
     ],
+    "keybindings": [
+      {
+        "command": "hugohabitat.openInBrowser",
+        "key": "ctrl+k h",
+        "mac": "cmd+k h",
+        "when": "editorTextFocus && (resourceLangId == markdown || resourceLangId == html)"
+      }
+    ],
     "menus": {
       "commandPalette": [
         {
