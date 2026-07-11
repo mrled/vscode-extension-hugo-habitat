@@ -159,6 +159,47 @@ function matchFiles(index, refSegs) {
   });
 }
 
+// Resolve a set of reference segments against the index and, depending on the
+// number of matches, push a clickable link or a diagnostic. `warnOnMissing`
+// controls whether a zero-match reference is flagged: shortcodes are always
+// meant to resolve (so we warn), but a Markdown link that doesn't resolve is
+// probably an ordinary link, so we stay silent and leave it to VS Code.
+/**
+ * @param {Entry[]} index
+ * @param {string} contentRoot
+ * @param {vscode.Range} range
+ * @param {string[]} refSegs
+ * @param {vscode.DocumentLink[]} links
+ * @param {vscode.Diagnostic[]} diagnostics
+ * @param {boolean} warnOnMissing
+ */
+function resolveInto(index, contentRoot, range, refSegs, links, diagnostics, warnOnMissing) {
+  if (!refSegs.length) return;
+  const found = matchFiles(index, refSegs);
+  const label = refSegs.join('/');
+
+  if (found.length === 1) {
+    const link = new vscode.DocumentLink(range, vscode.Uri.file(found[0].file));
+    link.tooltip = 'Hugo Habitat: ' + path.relative(contentRoot, found[0].file);
+    links.push(link);
+  } else if (found.length === 0) {
+    if (warnOnMissing) {
+      diagnostics.push(new vscode.Diagnostic(
+        range,
+        'Hugo Habitat: no content file matches "' + label + '".',
+        vscode.DiagnosticSeverity.Warning
+      ));
+    }
+  } else {
+    const list = found.map((f) => path.relative(contentRoot, f.file)).join(', ');
+    diagnostics.push(new vscode.Diagnostic(
+      range,
+      'Hugo Habitat: reference "' + label + '" is ambiguous — ' + found.length + ' matches: ' + list + '.',
+      vscode.DiagnosticSeverity.Error
+    ));
+  }
+}
+
 /**
  * @param {vscode.TextDocument} document
  * @returns {{ links: vscode.DocumentLink[], diagnostics: vscode.Diagnostic[] }}
@@ -173,6 +214,8 @@ function computeAll(document) {
   if (!contentRoot) return { links, diagnostics };
 
   const index = getIndex(contentRoot);
+  const text = document.getText();
+
   const alt = getShortcodes(contentRoot)
     .slice()
     .sort((a, b) => b.length - a.length) // longer names first so alternation is unambiguous
@@ -181,7 +224,6 @@ function computeAll(document) {
   // {{< name arg  or  {{% name arg  ; arg is quoted or a bare token.
   const re = new RegExp('\\{\\{[<%]\\s*(' + alt + ')\\s+("[^"]*"|\'[^\']*\'|[^\\s%>]+)', 'g');
 
-  const text = document.getText();
   let m;
   while ((m = re.exec(text)) !== null) {
     const token = m[2];
@@ -197,28 +239,29 @@ function computeAll(document) {
       innerEnd -= 1;
     }
     const range = new vscode.Range(document.positionAt(innerStart), document.positionAt(innerEnd));
+    resolveInto(index, contentRoot, range, parseRef(token), links, diagnostics, true);
+  }
 
-    const refSegs = parseRef(token);
-    const found = matchFiles(index, refSegs);
-    const label = refSegs.join('/');
-
-    if (found.length === 1) {
-      const link = new vscode.DocumentLink(range, vscode.Uri.file(found[0].file));
-      link.tooltip = 'Hugo: ' + path.relative(contentRoot, found[0].file);
-      links.push(link);
-    } else if (found.length === 0) {
-      diagnostics.push(new vscode.Diagnostic(
-        range,
-        'Hugo Habitat: no content file matches "' + label + '".',
-        vscode.DiagnosticSeverity.Warning
-      ));
-    } else {
-      const list = found.map((f) => path.relative(contentRoot, f.file)).join(', ');
-      diagnostics.push(new vscode.Diagnostic(
-        range,
-        'Hugo Habitat: reference "' + label + '" is ambiguous — ' + found.length + ' matches: ' + list + '.',
-        vscode.DiagnosticSeverity.Error
-      ));
+  // Also resolve ordinary Markdown links whose target is a Hugo logical path,
+  // e.g. [text](blog/whatever) or [text](/blog/whatever). Both are treated as
+  // content-root references (the leading slash is optional and normalized away
+  // by parseRef). We only take over a link when its target resolves to exactly
+  // one content file; targets with a URL scheme, an in-page #anchor, or an
+  // explicitly relative ./ or ../ path are left to VS Code's built-in handling.
+  if (document.languageId === 'markdown') {
+    const mdRe = /(\[[^\]]*\]\()([^)\s]+)/g;
+    let mm;
+    while ((mm = mdRe.exec(text)) !== null) {
+      const target = mm[2];
+      if (/^\w[\w+.-]*:/.test(target)) continue; // has a URL scheme (http:, mailto:, ...)
+      if (target[0] === '#') continue;            // in-page anchor
+      if (target[0] === '.') continue;            // explicitly relative
+      const targetStart = mm.index + mm[1].length;
+      const range = new vscode.Range(
+        document.positionAt(targetStart),
+        document.positionAt(targetStart + target.length)
+      );
+      resolveInto(index, contentRoot, range, parseRef(target), links, diagnostics, false);
     }
   }
 

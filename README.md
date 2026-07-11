@@ -16,7 +16,7 @@ it detects references to bare unique names, paths relative to the content direct
 - `{{< relref "/area51/posts/unique-slug" >}}`
 - `{{< ref "/subsection/area51" >}}`
 
-Referenceds
+References
 
 It turns them into clickable links for files like:
 
@@ -30,9 +30,24 @@ This works for both `.md` and `.html` files.
 Exactly one file must match, else it will show a warning squiggle and an error listing candidates
 (e.g. if both `slug.md` and `slug/index.md` exist).
 
+### Custom shortcodes
+
 It detects `ref` and `relref` shortcodes by default.
 You can add to this list by setting `shortcodes` in the config file,
 for instance, if you have a `page` shortcode: `"shortcodes": ["page"]`.
+
+### Clickable Markdown links
+
+VS Code supports Markdown links, but only resolved from the _repository root_, not from the `content/` directory.
+This clashes with what Hugo expects, and means that clickable Markdown links don't work for Hugo sites.
+We add a clickable link for the `content/`-based path that Hugo uses to a hover menu.
+This is a little confusing; for the `ref` style links above, you just cmd-click,
+while for real Markdown links, you hover over it, then select `Hugo Habitat: /path/to/file.md`.
+
+Supports links like this:
+
+- `[Improving argparse docs](/blog/argparse-improving-docs-generation)`
+- `[Improving argparse docs](blog/argparse-improving-docs-generation)` (the leading slash is optional)
 
 ## Configuration
 
