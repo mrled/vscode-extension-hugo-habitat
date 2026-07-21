@@ -119,23 +119,51 @@ function activate(context) {
     vscode.workspace.onDidChangeTextDocument((e) => refresh(e.document)),
     vscode.workspace.onDidCloseTextDocument((d) => diagnostics.delete(d.uri))
   );
+  // Also recompute when an editor becomes visible/active. VS Code re-requests
+  // the inlay-hint glyphs on its own when a background tab is shown, but the
+  // squiggles are a separate diagnostic collection with no such trigger — so a
+  // tab that went stale in the background (e.g. because a page it references was
+  // created while it was hidden) would keep its old squiggle even after the
+  // glyph resolved. Refreshing on show recomputes diagnostics against the
+  // now-current index, matching what the glyph already reflects.
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor((editor) => refresh(editor && editor.document)),
+    vscode.window.onDidChangeVisibleTextEditors((editors) => editors.forEach((ed) => refresh(ed.document)))
+  );
   vscode.workspace.textDocuments.forEach(refresh);
 
   // Rebuild the file index whenever content files (or the config) change, and
-  // ask VS Code to re-request inlay hints since resolution may now differ.
-  // Recompute diagnostics for every open document too, not just the visible
-  // ones: onDidChangeInlayHints only refreshes visible editors, but creating a
-  // new page usually opens it and pushes the referencing file into a background
-  // tab, which would otherwise keep its stale squiggle (and missing glyph) until
-  // the window was reloaded.
+  // ask VS Code to re-request inlay hints since resolution may now differ. This
+  // runs off a workspace-wide file watcher, so it has to stay cheap and it must
+  // not be run per-event: a Hugo build or a running `hugo server` rewrites
+  // hundreds of files under public/ at once, and doing a synchronous re-index
+  // for each one froze the extension host. So we coalesce bursts into at most
+  // one refresh per window (throttle), and each refresh only re-diagnoses the
+  // editors currently on screen — background tabs are refreshed when shown, by
+  // the visibility handler above.
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let invalidateTimer;
   const invalidate = () => {
-    clearIndexCache();
-    vscode.workspace.textDocuments.forEach(refresh);
-    onDidChangeInlayHints.fire();
+    if (invalidateTimer) return;
+    invalidateTimer = setTimeout(() => {
+      invalidateTimer = undefined;
+      clearIndexCache();
+      vscode.window.visibleTextEditors.forEach((ed) => refresh(ed.document));
+      onDidChangeInlayHints.fire();
+    }, 250);
+  };
+  context.subscriptions.push({ dispose: () => invalidateTimer && clearTimeout(invalidateTimer) });
+
+  // Ignore events for files that aren't under a Hugo content/ directory (build
+  // output in public/, node_modules, etc.) — they can't affect resolution and
+  // are the bulk of the churn a Hugo project generates.
+  /** @param {vscode.Uri} uri */
+  const onContentEvent = (uri) => {
+    if (findContentRoot(uri.fsPath)) invalidate();
   };
   const watcher = vscode.workspace.createFileSystemWatcher('**/*.{md,markdown,html,htm}');
-  watcher.onDidCreate(invalidate);
-  watcher.onDidDelete(invalidate);
+  watcher.onDidCreate(onContentEvent);
+  watcher.onDidDelete(onContentEvent);
   const cfgWatcher = vscode.workspace.createFileSystemWatcher('**/habitat.json');
   cfgWatcher.onDidCreate(invalidate);
   cfgWatcher.onDidChange(invalidate);
