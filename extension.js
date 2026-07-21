@@ -123,8 +123,14 @@ function activate(context) {
 
   // Rebuild the file index whenever content files (or the config) change, and
   // ask VS Code to re-request inlay hints since resolution may now differ.
+  // Recompute diagnostics for every open document too, not just the visible
+  // ones: onDidChangeInlayHints only refreshes visible editors, but creating a
+  // new page usually opens it and pushes the referencing file into a background
+  // tab, which would otherwise keep its stale squiggle (and missing glyph) until
+  // the window was reloaded.
   const invalidate = () => {
     clearIndexCache();
+    vscode.workspace.textDocuments.forEach(refresh);
     onDidChangeInlayHints.fire();
   };
   const watcher = vscode.workspace.createFileSystemWatcher('**/*.{md,markdown,html,htm}');
