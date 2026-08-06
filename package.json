@@ -33,14 +33,12 @@
     "keybindings": [
       {
         "command": "hugohabitat.openInBrowser",
-        "key": "ctrl+k h",
-        "mac": "cmd+k h",
+        "key": "alt+k b",
         "when": "editorTextFocus && (resourceLangId == markdown || resourceLangId == html)"
       },
       {
         "command": "hugohabitat.updateDate",
-        "key": "ctrl+k d",
-        "mac": "cmd+k d",
+        "key": "alt+k d",
         "when": "editorTextFocus && (resourceLangId == markdown || resourceLangId == html)"
       }
     ],
