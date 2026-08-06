@@ -12,7 +12,14 @@
 // Modules are plain CommonJS `require`s, so there is still no build step.
 
 const vscode = require('vscode');
-const { findContentRoot, clearIndexCache } = require('./lib/content');
+const {
+  findContentRoot,
+  logicalSegments,
+  getIndex,
+  matchFiles,
+  shortestUniqueSlug,
+  clearIndexCache,
+} = require('./lib/content');
 const { browserUrlFor } = require('./lib/config');
 const { computeAll } = require('./lib/resolve');
 const { dateFieldEdit } = require('./lib/frontmatter');
@@ -35,25 +42,80 @@ function activate(context) {
     })
   );
 
+  // The path commands below all act on the file in the active editor, and only
+  // when it lives under a Hugo content/ directory. Resolve both here, or warn
+  // and return null. (The `when` clauses in package.json already keep these
+  // commands off non-Markdown/HTML files, so language isn't rechecked.)
+  /** @returns {{ filePath: string, contentRoot: string } | null} */
+  const activeContentFile = () => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showWarningMessage('Hugo Habitat: no active editor.');
+      return null;
+    }
+    const filePath = editor.document.uri.fsPath;
+    const contentRoot = findContentRoot(filePath);
+    if (!contentRoot) {
+      vscode.window.showWarningMessage('Hugo Habitat: this file is not inside a Hugo content/ directory.');
+      return null;
+    }
+    return { filePath, contentRoot };
+  };
+
+  /** @param {string} text */
+  const copyToClipboard = async (text) => {
+    await vscode.env.clipboard.writeText(text);
+    vscode.window.setStatusBarMessage('Hugo Habitat: copied ' + text, 3000);
+  };
+
   // Open the current content file's rendered page in a web browser. The URL is
   // built from the file's logical Hugo path on top of the base URL (the
   // `hugo server` default, or `baseurl` from habitat.json). Only works for
   // files under a content/ directory.
   context.subscriptions.push(
     vscode.commands.registerCommand('hugohabitat.openInBrowser', () => {
-      const editor = vscode.window.activeTextEditor;
-      if (!editor) {
-        vscode.window.showWarningMessage('Hugo Habitat: no active editor to open.');
-        return;
-      }
-      const filePath = editor.document.uri.fsPath;
-      const contentRoot = findContentRoot(filePath);
-      if (!contentRoot) {
-        vscode.window.showWarningMessage('Hugo Habitat: this file is not inside a Hugo content/ directory.');
-        return;
-      }
-      const url = browserUrlFor(contentRoot, filePath);
+      const target = activeContentFile();
+      if (!target) return;
+      const url = browserUrlFor(target.contentRoot, target.filePath);
       return vscode.env.openExternal(vscode.Uri.parse(url));
+    })
+  );
+
+  // Copy the shortest reference that resolves to this page — what you'd paste
+  // into a `{{< ref ... >}}`. Usually that's just the last path segment, but it
+  // grows leftward until it is unambiguous within content/.
+  context.subscriptions.push(
+    vscode.commands.registerCommand('hugohabitat.copySlug', async () => {
+      const target = activeContentFile();
+      if (!target) return;
+      const segments = logicalSegments(target.contentRoot, target.filePath);
+      if (!segments.length) {
+        vscode.window.showWarningMessage('Hugo Habitat: the site home page has no slug to copy.');
+        return;
+      }
+      const index = getIndex(target.contentRoot);
+      const unique = shortestUniqueSlug(index, segments);
+      // No unique slice at all: either the file is new and unindexed (nothing
+      // matched, and its full path is still the right answer) or a second file
+      // shares its whole logical path, which is worth saying out loud since the
+      // copied reference will resolve ambiguously wherever it's pasted.
+      if (!unique && matchFiles(index, segments).length > 1) {
+        vscode.window.showWarningMessage(
+          'Hugo Habitat: "' + segments.join('/') + '" matches more than one content file; copied it anyway.'
+        );
+      }
+      await copyToClipboard((unique || segments).join('/'));
+    })
+  );
+
+  // Copy the page's whole logical path, leading slash and all, regardless of
+  // whether a shorter reference would have been unambiguous.
+  context.subscriptions.push(
+    vscode.commands.registerCommand('hugohabitat.copyFullSlug', async () => {
+      const target = activeContentFile();
+      if (!target) return;
+      const segments = logicalSegments(target.contentRoot, target.filePath);
+      await copyToClipboard('/' + segments.join('/'));
     })
   );
 

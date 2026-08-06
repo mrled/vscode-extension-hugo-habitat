@@ -72,7 +72,7 @@ for instance, if you have a `page` shortcode: `"shortcodes": ["page"]`.
 ### Open the current page in a browser
 
 Run **Hugo Habitat: Open in Browser** from the command palette
-(or press <kbd>Ctrl</kbd>+<kbd>K</kbd> <kbd>H</kbd>, <kbd>Cmd</kbd>+<kbd>K</kbd> <kbd>H</kbd> on macOS)
+(or press <kbd>Alt</kbd>+<kbd>K</kbd> <kbd>B</kbd>)
 to open that file in your browser.
 Requires `hugo server` to be running.
 Uses `baseurl` in the config, or defaults to `http://localhost:1313`.
@@ -84,13 +84,40 @@ Examples:
 ### Update the frontmatter date
 
 Run **Hugo Habitat: Update Date to Now** from the command palette
-(or press <kbd>Ctrl</kbd>+<kbd>K</kbd> <kbd>D</kbd>, <kbd>Cmd</kbd>+<kbd>K</kbd> <kbd>D</kbd> on macOS)
+(or press <kbd>Alt</kbd>+<kbd>K</kbd> <kbd>D</kbd>)
 to set the current file's frontmatter `date` field to the current time,
 written as a local-time RFC 3339 timestamp (e.g. `2026-07-11T14:32:07-05:00`).
 
 Works on both YAML (`---`) and TOML (`+++`) frontmatter.
 An existing `date` field is rewritten in place (keeping its indentation);
 if there is no `date` field, one is inserted at the top of the block.
+
+### Copy the page's slug
+
+Run **Hugo Habitat: Copy Slug** from the command palette
+(or press <kbd>Alt</kbd>+<kbd>K</kbd> <kbd>S</kbd>)
+to copy the shortest reference that resolves to the current page —
+what you'd paste into a `{{< ref ... >}}`.
+That's normally just the last path segment, but it grows leftward until it is
+unique among the files in `content/`, matching the resolution rules above:
+
+| Current file | Copied |
+| --- | --- |
+| `content/some-page.md` | `some-page` |
+| `content/some-page/index.md` (or `_index.md`, `index.html`, …) | `some-page` |
+| `content/blog/coolproject/index.md` | `coolproject` |
+| …but with `content/tags/coolproject/_index.md` also present | `blog/coolproject` |
+
+If two files share their *entire* logical path (e.g. both `dupe.md` and
+`dupe/index.md` exist) there is no unique reference; the full path is copied
+anyway and a warning says so.
+
+**Hugo Habitat: Copy Full Slug** (<kbd>Alt</kbd>+<kbd>K</kbd> <kbd>Shift</kbd>+<kbd>S</kbd>)
+always copies the whole logical path with a leading slash instead —
+`/blog/coolproject`, `/some-page` — whether or not something shorter would
+have been unambiguous.
+
+Both commands only work on Markdown and HTML files under a `content/` directory.
 
 ## Configuration
 

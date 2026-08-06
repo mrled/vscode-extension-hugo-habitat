@@ -28,6 +28,16 @@
         "command": "hugohabitat.updateDate",
         "title": "Hugo Habitat: Update Date to Now",
         "category": "Hugo Habitat"
+      },
+      {
+        "command": "hugohabitat.copySlug",
+        "title": "Hugo Habitat: Copy Slug",
+        "category": "Hugo Habitat"
+      },
+      {
+        "command": "hugohabitat.copyFullSlug",
+        "title": "Hugo Habitat: Copy Full Slug",
+        "category": "Hugo Habitat"
       }
     ],
     "keybindings": [
@@ -40,6 +50,16 @@
         "command": "hugohabitat.updateDate",
         "key": "alt+k d",
         "when": "editorTextFocus && (resourceLangId == markdown || resourceLangId == html)"
+      },
+      {
+        "command": "hugohabitat.copySlug",
+        "key": "alt+k s",
+        "when": "editorTextFocus && (resourceLangId == markdown || resourceLangId == html)"
+      },
+      {
+        "command": "hugohabitat.copyFullSlug",
+        "key": "alt+k shift+s",
+        "when": "editorTextFocus && (resourceLangId == markdown || resourceLangId == html)"
       }
     ],
     "menus": {
@@ -50,6 +70,14 @@
         },
         {
           "command": "hugohabitat.updateDate",
+          "when": "resourceLangId == markdown || resourceLangId == html"
+        },
+        {
+          "command": "hugohabitat.copySlug",
+          "when": "resourceLangId == markdown || resourceLangId == html"
+        },
+        {
+          "command": "hugohabitat.copyFullSlug",
           "when": "resourceLangId == markdown || resourceLangId == html"
         }
       ],
@@ -68,6 +96,16 @@
         },
         {
           "command": "hugohabitat.updateDate",
+          "when": "resourceLangId == markdown || resourceLangId == html",
+          "group": "navigation"
+        },
+        {
+          "command": "hugohabitat.copySlug",
+          "when": "resourceLangId == markdown || resourceLangId == html",
+          "group": "navigation"
+        },
+        {
+          "command": "hugohabitat.copyFullSlug",
           "when": "resourceLangId == markdown || resourceLangId == html",
           "group": "navigation"
         }
